@@ -1,0 +1,899 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ATLAS experimental drivability Service Template API",
+    "version": "0.0.1"
+  },
+  "externalDocs": {
+    "description": "Service Template Document",
+    "url": "https://htmlpreview.github.io/?https://github.com/atlasH2020-templates/drivability/blob/v0.0.1/doc.html"
+  },
+  "servers": [
+    {
+      "url": "https://<domain>/<path>"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Drivability"
+    },
+    {
+      "name": "Tires",
+      "description": "Browse tire manufacturers, models and kinds."
+    }
+  ],
+  "paths": {
+    "/status": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Drivability"
+        ],
+        "summary": "Compute current drivability status (compute_drivability_status)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "field_urn": {
+                    "$ref": "#/components/schemas/FieldURN"
+                  },
+                  "notification_url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "axles": {
+                    "$ref": "#/components/schemas/AxlesInfo"
+                  }
+                },
+                "required": [
+                  "field_urn",
+                  "axles"
+                ]
+              },
+              "example": {
+                "field_urn": "urn:com.agricircle.atlas.field_data:fdbe6f55-6179-4b88-9177-4afbed33adac",
+                "axles": [
+                  {
+                    "load": 1500,
+                    "number_of_wheels": 2,
+                    "pressure": 0.8,
+                    "tire_kind": "manufacturer_1_model_1_kind_1"
+                  },
+                  {
+                    "load": 2500,
+                    "number_of_wheels": 2,
+                    "pressure": 0.8,
+                    "tire_kind": "manufacturer_2_model_1_kind_2"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "operation_id": {
+                      "description": "Operation ID whose outcome can be queried in get_drivability_status",
+                      "type": "string"
+                    }
+                  },
+                  "example": {
+                    "operation_id": "b002be5d-047f-4862-8a0e-167d77c6a1e8"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation not supported by this service implementation. May only be generated when a notification_url is provided and the service does not support notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/status/{operation_id}": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Drivability"
+        ],
+        "summary": "Retrieve current drivability status (get_drivability_status)",
+        "parameters": [
+          {
+            "description": "ID of operation (from compute_drivability_status)",
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "b002be5d-047f-4862-8a0e-167d77c6a1e8"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "completed operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrivabilityStatus"
+                },
+                "example": {
+                  "status": "READY",
+                  "operation_id": "b002be5d-047f-4862-8a0e-167d77c6a1e8",
+                  "worst_risk_level": "MEDIUM",
+                  "low_risk_portion": 0.9,
+                  "pressures": [
+                    0.8,
+                    0.8
+                  ]
+                }
+              },
+              "application/geopackage+sqlite3": {
+                "schema": {
+                  "description": "GeoPackage file",
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The operation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendations/date": {
+      "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Drivability"
+        ],
+        "summary": "Request a date recommendation suitable for drivability (request_date_recommendation)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DateRecommendationRequest"
+              },
+              "example": {
+                "field_urn": "urn:com.agricircle.atlas.field_data:fdbe6f55-6179-4b88-9177-4afbed33adac",
+                "axles": [
+                  {
+                    "load": 1500,
+                    "number_of_wheels": 2,
+                    "pressure": 0.8,
+                    "tire_kind": "manufacturer_1_model_1_kind_1"
+                  },
+                  {
+                    "load": 2500,
+                    "number_of_wheels": 2,
+                    "pressure": 0.8,
+                    "tire_kind": "manufacturer_2_model_1_kind_2"
+                  }
+                ],
+                "from": "2022-08-20",
+                "to": "2022-10-01",
+                "risk_tolerance": 0.15
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "operation_id": {
+                      "description": "Operation ID whose outcome can be queried in get_current_drivability",
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "operation_id": "163354e3-10b8-4d35-831d-c82c8b14d20f"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The advice was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation not supported by this service implementation. Either recommendations are not supported, or a notification_url is provided and the service does not support notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendations/date/{operation_id}": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Drivability"
+        ],
+        "summary": "Retrieve date recommendation (get_date_recommendation)",
+        "parameters": [
+          {
+            "description": "ID of operation (from compute_date_recommendation)",
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "string"
+            },
+            "example": "163354e3-10b8-4d35-831d-c82c8b14d20f"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "completed operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DateRecommendation"
+                },
+                "example": {
+                  "status": "READY",
+                  "operation_id": "163354e3-10b8-4d35-831d-c82c8b14d20f",
+                  "worst_risk_level": "MEDIUM",
+                  "low_risk_portion": 0.9,
+                  "pressures": [
+                    0.8,
+                    0.8
+                  ],
+                  "date": "2022-07-12"
+                }
+              },
+              "application/geopackage+sqlite3": {
+                "schema": {
+                  "description": "GeoPackage file",
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The operation was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation not supported by this service implementation. Can only be returned if request_date_recommendation is not supported either."
+          }
+      }
+    },
+    "/tires/manufacturers": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Tires"
+        ],
+        "summary": "List available tire manufacturers (list_tire_manufacturers).",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Manufacturer's identifier.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Manuacturer's display name.",
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": "manufacturer_1",
+                    "name": "Manufacturer 1"
+                  },
+                  {
+                    "id": "manufacturer_2",
+                    "name": "Manufacturer 2"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tires/models": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Tires"
+        ],
+        "summary": "List manufacturer's tire models (list_tire_models).",
+        "parameters": [
+          {
+            "description": "ID of the tire manufacturer",
+            "name": "manufacturer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "manufacturer_1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Model's identifier. Model identifiers must be unique across all manufacturers.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Model's display name.",
+                        "type": "string"
+                      },
+                      "details": {
+                        "description": "Additional info common to all tire kinds within this model.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  },
+                  "example": [
+                    {
+                      "id": "manufacturer_1model_1",
+                      "name": "Model 1"
+                    },
+                    {
+                      "id": "manufacturer_1_model_2",
+                      "name": "Model 2"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The manufacturer_id was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tires/kind": {
+      "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Tires"
+        ],
+        "summary": "List kind of tires within tire model (list_tire_kinds).",
+        "parameters": [
+          {
+            "description": "ID of the tire model",
+            "name": "model_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "manufacturer_1_model_1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "description": "Tire kind's identifier. Must be unique across all manufacturers and all models.",
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "Tire kind's display name.",
+                        "type": "string"
+                      },
+                      "details": {
+                        "description": "Detailed properties of the tire such as dimensions, etc.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name"
+                    ]
+                  }
+                },
+                "example": [
+                  {
+                    "id": "manufacturer_1_model_1_kind_1",
+                    "name": "Model 1"
+                  },
+                  {
+                    "id": "manufacturer_1_model_1_kind_2",
+                    "name": "Model 2"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or missing credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The tire model was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DrivabilityStatusRequest": {
+        "type": "object",
+        "properties": {
+          "field_urn": {
+            "$ref": "#/components/schemas/FieldURN"
+          },
+          "notification_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "axles": {
+            "$ref": "#/components/schemas/AxlesInfo"
+          }
+        },
+        "required": [
+          "field_urn",
+          "axles"
+        ]
+      },
+      "DrivabilityStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "IN_PROGRESS",
+              "CONFIGURATION_REQUIRED",
+              "READY",
+              "FAILED"
+            ],
+            "description": "status of the operation"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "worst_case_risk": {
+            "$ref": "#/components/schemas/RiskLevel"
+          },
+          "low_risk_portion": {
+            "description": "Fraction of the field's area with a LOW drivability risk.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "pressures": {
+            "description": "Pressure per axle in the same order than the request.",
+            "type": "array",
+            "items": {
+              "description": "The pressure for all tires on this axle.",
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "operation_id",
+          "worst_case_risk",
+          "low_risk_portion",
+          "pressures"
+        ]
+      },
+      "DateRecommendationRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DrivabilityStatusRequest"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "from": {
+                "description": "Earliest time at which the field operation should take place. Defaults to 'now' when omitted.",
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "description": "Latest time at which the field operation should take place.",
+                "type": "string",
+                "format": "date"
+              },
+              "risk_tolerance": {
+                "description": "The largest fraction of the field's area that may be other than LOW risk.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        ],
+        "required": [
+          "field_urn",
+          "axles",
+          "to",
+          "low_risk_portion"
+        ]
+      },
+      "DateRecommendation": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "date": {
+                "description": "Recommended date and time at which field drivable within the requested parameters.",
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/DrivabilityStatus"
+          }
+        ],
+        "required": [
+          "status",
+          "operation_id",
+          "worst_case_risk",
+          "low_risk_portion",
+          "pressures",
+          "date"
+        ]
+      },
+      "AxlesInfo": {
+        "description": "Detailed information on each axle of the equipment that will be used. This includes the tractor axles, as well as possible implements axles that may be used for an operation.",
+        "type": "array",
+        "minItems": 2,
+        "items": {
+          "type": "object",
+          "properties": {
+            "load": {
+              "description": "Total weight bearing on the axle, expressed in Kg. This must take into account weight distribution from implements, where applicable.",
+              "type": "number",
+              "minimum": 100
+            },
+            "pressure": {
+              "description": "Air pressure of tires on the axle. If omitted, the nominal tire pressure will be used. If omitted, the implementation must provide best efforts to determine a compatible tire pressure.",
+              "type": "number",
+              "minimum": 0.4,
+              "maximum": 3
+            },
+            "number_wheels": {
+              "description": "Number of wheels attached to the axle.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "tire_kind": {
+              "description": "Includes the manufacturer, model and specific tire model. It must match one of the values returned by the tire_kind endpoint.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "load",
+            "number_wheels",
+            "tire_kind"
+          ]
+        }
+      },
+      "RiskLevel": {
+        "description": "Worst case risk level within the field",
+        "type": "string",
+        "enum": [
+          "UNDETERMINED",
+          "LOW",
+          "MEDIUM",
+          "HIGH"
+        ]
+      },
+      "FieldURN": {
+        "type": "string",
+        "pattern": "^urn:[a-z][a-z0-9_.\\-]*:[\\w-.]+",
+        "description": "Uniform resource name of a field with the syntax `urn:<service_id>:<internal_id>`. <service_id> must be the id of a valid and active ATLAS service"
+      },
+      "DetailedError": {
+        "type": "object",
+        "description": "This defines the structure of an error payload when one is present. Actual messages and additional error information content may change from one implementation to another",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "error description"
+          },
+          "status": {
+            "type": "string",
+            "format": "number",
+            "description": "http error code"
+          },
+          "error_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "A service's proprietary UI url where the user may navigate to view additional information or be prompted for additional actions to deal with the error. A well-behaved FMIS will present his users with a visual indication and the means to click on this link when this attribute is present."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Additional detailed information"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "example": {
+          "message": "this is a sample error message",
+          "errors": [
+            "this is an example of additional error information"
+          ]
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -1,0 +1,299 @@
+<html>
+<head>
+    <style type="text/css">
+        body { font-family: courier, courier new, monospace; font-size:12px; margin-left: 42px; width: 465px; white-space: pre-line; }
+        h2 { margin: 10px 0 0 -22px; font-size:12px; padding: 0 !important }
+        table { font-size: 10px; margin-left: -22px; width: 450px; }
+        div.header { padding: 0; margin: 0 0 0 -22px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+ATLAS Service Template Specification
+Name                                                  drivability
+Version                                                     0.0.1
+Author(s)                            M. Caballero (AgriCircle AG)
+</div>
+
+<h2>The "drivability" ATLAS Service Template</h2>
+<div style="margin-left: -22px;">
+Abstract
+
+This document describes the specifications for drivability services whose purpose is to advise farmers on possible soil compaction risks when driving over a field with a particular equipment.
+</div>
+<h2>1 Introduction</h2>
+
+drivability services determine whether conditions are appropriate for a tractor to drive over a specific field without impacting soil negatively. Typically, drivability_services may use sensor information to determine soil moisture. drivability_services may be used in conjunction with the ATLAS Equipment Centre to determine when some field operations are best carried out from a soil compaction perspective.
+
+Farmers may use different drivability services depending on their budget, the accuracy and the granularity of information they require, etc.
+
+<h2>2 Terminology</h2>
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119 and indicate requirement levels for compliant implementations.
+
+The notation "[xxx]" (xxx in square brackets) is equivalent to "array of xxx".
+
+When used alone, the term "drivability" refers to "drivability ATLAS Service Template". Instead, "drivability service" is equivalent to "an ATLAS Service implementing the drivability ATLAS Service Template".
+
+<h2>3 Pre-requisites</h2>
+
+A thorough understanding in the following is required for
+both service consumers or service provider implementors:
+<pre>
+    - GeoJSON specifications (<a href="https://geojson.org/">https://geojson.org/</a>)
+    - GeoPackage specifications (<a href="https://www.geopackage.org/">https://www.geopackage.org/</a>)
+</pre>
+<h2>4 drivability Usage Scenarios</h2>
+
+The common use case for drivability is to determine the drivability risk areas in the current conditions.
+
+<h2>5 Service Template API Overview</h2>
+
+This section provides a very high-level summary of the drivability API:
+<pre>
+Drivability Endpoints
+    Compute Current Drivability Status
+    Get Current Drivability Status
+    Request Date Recommendations
+    Get Date Recommendations
+Tires Endpoints
+    List Tire Manufacturers
+    List Tire Models
+    List Tire Kinds
+
+All endpoints are mandatory and MUST be implemented for a drivability service to be approved.
+
+</pre>
+Implementations of drivability may require more parameters that are not included in the API. Such implementations MAY provide end-user configuration and management tools in a proprietary user interface.
+
+Within this section, operations are summarised with simple tables:
+<pre>
++--------------------------------------------+
+| logical operation name                     |
++-------------+------------------------------+
+|      Inputs | &lt;URL parameters or           |
+|             | request body attributes&gt;     |
++-------------+------------------------------+
+|     Outputs | &lt;body attributes&gt;            |
++-------------+------------------------------+
+</pre>
+Only the most meaningful parameters are discussed in this document. Please refer to the OpenAPI specifications for full details.
+
+drivability services are not required to handle intense traffic from a single client, such as the one that may result from being directly invoked on user interface interactions in an FMIS, for instance. Implementors MAY generate a 429 TOO MANY REQUESTS error response if the rate of calls exceed some pre-defined quota.
+
+<h2>5.1 Drivability Endpoints</h2>
+drivability services may retrieve any relevant information for determining status and making recommendations from the field_data service (e.g., boundaries, current crop, field operations, etc.).
+
+<h2>5.1.1 Compute current drivability</h2>
+
+This endpoint starts the process of determining the current drivability status. The operation may be arbitrarily length and the results are retrieved with the get_current_drivability_status endpoint.
+
+<pre>
++--------------------------------------------+
+| compute_current_drivability                |
++-------------+------------------------------+
+|      Inputs | field urn, [axle info],      |
+|             | notification_url             |
++-------------+------------------------------+
+|     Outputs | operation id                 |
++-------------+------------------------------+
+</pre>
+axle_info is an array of information about load, number of tires, pressure and type of tires per axle.
+Services should return an error 501 if they don't support notifications and a notification_url is provided.
+
+<h2>5.1.2 Get current drivability status</h2>
+
+This endpoint returns state of the compute_drivability operation as well as the resulting status in case of completion.
+<pre>
++--------------------------------------------+
+| get_drivability_status                     |
++-------------+------------------------------+
+|      Inputs | operation id                 |
++-------------+------------------------------+
+|     Outputs | operation status,            |
+|             | drivability status           |
++-------------+------------------------------+
+</pre>
+The status may be one of IN_PROGRESS, CONFIGURATION_REQUIRED, READY, FAILED. In this context, the IN_PROGRESS status indicates that some background processing is still being carried out and that the service is not yet ready to perform active monitoring. The CONFIGURATION_REQUIRED status indicates that the end-user is required to perform some manual configuration on the service's proprietary UI. FAILED indicates that monitoring is not possible. 0 or more alerts may be present only when the status is READY.
+
+If the status is READY then the drivability status as a JSON object, or as a detailed GeoPackage file will be returned.
+
+<h2>5.1.3 Request Date Recommendations</h2>
+
+Services MAY implement this endpoint which is used to request dates suitable for drivability on a field within given constraints. The operation may be arbitrarily length and the results are retrieved with the get_date_recommendations endpoint.
+
+If not supported, services MUST return 501.
+
+<pre>
++--------------------------------------------+
+| request_date_recommendation                |
++-------------+------------------------------+
+|      Inputs | field urn, [axle info],      |
+|             | date range, risk tolerance,  |
+|             | notification_url             |
++-------------+------------------------------+
+|     Outputs | operation id                 |
++-------------+------------------------------+
+</pre>
+In addition to the same parameters than compute_current_drivability, a date range may be specified within which a suitable date should be found, as well as a tolerance, in terms of the portion of the field area that should have the lowest drivability risk.
+
+<h2>5.1.4 Get date recommendation</h2>
+
+This endpoint returns state of the request_date_recommendation operation as well as the resulting information in case of completion.
+
+This endpoint MUST NOT return 501 if request_date_recommendation is supported.
+
+<pre>
++--------------------------------------------+
+| get_date_recommendation                    |
++-------------+------------------------------+
+|      Inputs | operation id                 |
++-------------+------------------------------+
+|     Outputs | operation status,            |
+|             | date, drivability status     |
++-------------+------------------------------+
+</pre>
+The status may be one of IN_PROGRESS, CONFIGURATION_REQUIRED, READY, FAILED. In this context, the IN_PROGRESS status indicates that some background processing is still being carried out and that the service is not yet ready to perform active monitoring. The CONFIGURATION_REQUIRED status indicates that the end-user is required to perform some manual configuration on the service's proprietary UI. FAILED indicates that monitoring is not possible. 0 or more alerts may be present only when the status is READY.
+
+If the status is READY then the recommended date, in addition to the drivability status are included in the response.
+<h2>5.2 Tire Endpoints</h2>
+
+Drivability usually requires detailed information on the mechanical characteristics of the tires that are mounted on the equipment, whose internal format is not standardized in this service template. The tire endpoints make it possible to browse through the service provider's database in order to identify the specific kind that must be supplied in the drivability requests.
+
+<h2>5.2.1 List tire manufacturers</h2>
+
+This endpoint returns lists all the tire manufacturers supported by the service.
+<pre>
++--------------------------------------------+
+| list_tire_manufacturers                    |
++-------------+------------------------------+
+|      Inputs | -                            |
++-------------+------------------------------+
+|     Outputs | [id, name]                   |
++-------------+------------------------------+
+</pre>
+
+<h2>5.2.2 List tire models</h2>
+
+This endpoint returns the list of tire models provided by a manufacturer.
+<pre>
++--------------------------------------------+
+| list_tire_models                           |
++-------------+------------------------------+
+|      Inputs | manufacturer_id              |
++-------------+------------------------------+
+|     Outputs | [id, name, details]          |
++-------------+------------------------------+
+</pre>
+Note that the model ids MUST be unique across all manufacturers.
+
+<h2>5.2.3 List tire kinds</h2>
+
+This endpoint returns the list of tire kinds of a given model.
+<pre>
++--------------------------------------------+
+| list_tire_kinds                            |
++-------------+------------------------------+
+|      Inputs | model_id                     |
++-------------+------------------------------+
+|     Outputs | [id, name, details]          |
++-------------+------------------------------+
+</pre>
+Note that the kind ids MUST be unique across all manufacturers and models.
+
+<h2>6 Data Formats</h2>
+
+This section focuses on the description of binary (file) data formats. Please refer to the drivability OpenAPI specifications for details on all other payload and parameter descriptions.
+
+<h2>6.1	Drivability Map File Format</h2>
+
+Drivability maps MUST be in GeoPackage (<a href="https://www.geopackage.org">https://www.geopackage.org</a>) format version 1.2 or newer.
+
+A drivability GeoPackage MUST contain the additional "risk" table:
+<pre>
++=========================================================+
+|                TABLE gpkg_contents                      |
++=====+=============+=====================================+
+| ROW | COLUMN      | VALUE                               |
++-----+-------------+-------------------------------------+
+|                    ...                                  |
++-----+-------------+-------------------------------------+
+|     | table_name  | "risk"                              |
+|     +-------------+-------------------------------------+
+|     | data_type   | "2d-gridded-coverage|features"      |
++-----+-------------+-------------------------------------+
+</pre>
+If the data_type of the risk table is "features", then the columns must be as follows:
+<pre>
++=========================================================+
+|                    TABLE risk                           |
++=====+=================+=================================+
+| ROW | COLUMN          | VALUE                           |
++-----+-----------------+---------------------------------+
+|     | id              | "INTEGER"                       |
+|     +-----------------+---------------------------------+
+|     | geometry        | "GeoPackage Geometry"           |
+|     +-----------------+---------------------------------+
+|     | level           | "INTEGER" (0=undetermined,      |
+|     |                 |     1=low, 2=medium, 3=high)    |
+|-----+-----------------+---------------------------------+
+</pre>
+Instead, if the data_type of the risk table is "2d-gridded-coverage" then it must be defined as follows:
+<pre>
++=========================================================+
+|                    TABLE risk                           |
++=====+=================+=================================+
+| ROW | COLUMN          | VALUE                           |
++-----+-----------------+---------------------------------+
+|     | id              | "INTEGER"                       |
+|     +-----------------+---------------------------------+
+|     | zoom_level      | "INTEGER"                       |
+|     +-----------------+---------------------------------+
+|     | tile_column     | "INTEGER"                       |
+|     +-----------------+---------------------------------+
+|     | tile_row        | "INTEGER"                       |
+|     +-----------------+---------------------------------+
+|     | tile_data       | "BLOB (TIFF)"                   |
+|-----+-----------------+---------------------------------+
+</pre>
+Where tile_data is a tiff blob holding Byte values as per GeoPackage specifications (<a href="http://docs.opengeospatial.org/is/17-066r1/17-066r1.html#_storage_formats_and_grid_cell_values">http://docs.opengeospatial.org/is/17-066r1/17-066r1.html#_storage_formats_and_grid_cell_values</a>).
+
+<h2>7 Access and Authentication</h2>
+
+Farmers MUST have an account setup on a drivability service in order to authenticate and access API endpoints. The service implementor is responsible for the creation of accounts; it is not covered in the service template specifications.
+
+Unless specifically documented in the OpenAPI specifications, all API calls must include credentials in form of Bearer authentication (also called token authentication). Clients can obtain an access token on behalf of their user from the service's authorization server (see ATLAS service pairing).
+
+Some of the information held by drivability services may be considered sensitive from a GDPR perspective. The service's authorization server SHOULD request the client's end-user consent at service pairing time in order to deliver an access token.
+
+<h2>8 Dynamic Behaviour</h2>
+
+<h2>8.1 Polling</h2>
+
+After a drivability operation has been initiated, the client polls the respective result endpoints (get_drivability_status, get_date_recommendation) at regular intervals until the returned status is CONFIGURATION_REQUIRED, READY or FAILED.
+
+A CONFIGURATION_REQUIRED status indicates that a user action is required on the proprietary user interface of the drivability service. By convention, in case of CONFIGURATION_REQUIRED status, the service MAY return a browser URL to the location where a user can provide additional parameters (as required for a specific service implementation). It is the user interface of the client application originating the request to display an appropriate message to the end-user with a clickable link to the provided URL.
+
+<h2>8.2 Notifications</h2>
+
+Services implementations MAY implement support for notifications. If not, and a notification_url is supplied for an operation, the MUST generate a 501 error.
+
+Otherwise, if a notification URL was supplied on an operation endpoint, it MUST be invoked via HTTP Post by the supporting service when the operation status changes. The payload will be identical to the one that would be returned by a request to the polling endpoints.
+
+<h2>8.3 General Comments on Notifications</h2>
+
+Services must provide best efforts to deliver notifications. A notification is considered successful if the target returns an http result code 2XX.
+
+Errors may occur during notification delivery. Depending on the type of error, services must react in different ways:
+
+i) Network error - the connection to the client's host (from notification URL) cannot be established. The service MUST retry a certain number of times. The number of retries and possible backoff strategy is left at the discretion of the service implementer.
+
+ii) Server errors (5XX result code) - these errors are potentially transient. The same strategy as for Network errors SHOULD be applied.
+
+iii) Client errors (4XX result code) - typically when the notification URL is invalid, or the authentication is invalid/expired. 4XX errors should never be sent for transient client-side conditions and therefore services SHOULD NOT attempt retries.
+
+Upon an excessive number of errors, services MAY give up further notification attempts. In that case, clients can only retrieve completion information via polling.
+
+</body>
+</html>
