@@ -413,6 +413,7 @@
           "501": {
             "description": "Operation not supported by this service implementation. Can only be returned if request_date_recommendation is not supported either."
           }
+        }
       }
     },
     "/tires/manufacturers": {
